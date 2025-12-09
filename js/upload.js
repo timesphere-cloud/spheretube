@@ -23,7 +23,7 @@ const db = getFirestore(app);
 /* ===== Cloudinary (public info only) ===== */
 const CLOUD_NAME = 'dmogrkbja'; // from your config
 // IMPORTANT: create an unsigned upload preset in Cloudinary and put its name here:
-const UPLOAD_PRESET = 'YOUR_UNSIGNED_UPLOAD_PRESET'; // <-- REPLACE this with your unsigned preset name
+const UPLOAD_PRESET = 'Upload'; // <-- REPLACE this with your unsigned preset name
 
 /* ===== UI ===== */
 const uploadForm = document.getElementById('uploadForm');
