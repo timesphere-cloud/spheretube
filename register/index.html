@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SphereTube — Register</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="/spheretube/dev_img/site_icon.png" />
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+
+  <!-- Shared styles (ten sam plik co index i login) -->
+  <link rel="stylesheet" href="/spheretube/css/styles.css" />
+
+  <style>
+    /* Rozszerzenia tylko dla register */
+    .auth-wrap{
+      max-width:520px;
+      margin:32px auto;
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.008));
+      border:1px solid rgba(255,255,255,0.02);
+      padding:22px;
+      border-radius:12px;
+    }
+    .auth-wrap h2{margin:0 0 8px;font-size:20px;color:#fff}
+    .auth-desc{color:var(--muted);font-size:14px;margin-bottom:18px}
+    .form-group{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+    input[type="email"], input[type="password"], input[type="text"], input[type="date"]{
+      background:transparent;border:1px solid rgba(255,255,255,0.04);padding:10px;border-radius:8px;color:inherit;font-size:14px;
+    }
+    .primary-btn{
+      display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-weight:600;cursor:pointer;width:100%;
+    }
+    .muted-link{display:block;text-align:center;margin-top:12px;color:var(--muted);font-size:14px;text-decoration:none}
+    .error{color:#ff7b7b;background:rgba(255,123,123,0.06);padding:8px;border-radius:8px;border:1px solid rgba(255,123,123,0.12);font-size:13px;margin-bottom:10px}
+    .pw-row{display:flex;gap:8px;align-items:center}
+    .pw-toggle{background:transparent;border:0;color:var(--muted);cursor:pointer;padding:8px;border-radius:8px}
+    @media (max-width:700px){
+      .auth-wrap{margin:18px;padding:16px}
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="left">
+      <button id="hamburgerBtn" class="icon-btn" aria-label="menu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      <img class="logo" src="/spheretube/dev_img/logo.png" alt="SphereTube logo" />
+    </div>
+
+    <div class="right">
+      <button id="userBtn" class="user-btn" aria-label="konto / login">
+        <span class="material-symbols-outlined">person</span>
+        <span id="authLabel">SignUp / SignIn</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Side menu (identyczne) -->
+  <nav id="sideMenu" class="side-menu closed" aria-hidden="true">
+    <ul>
+      <li><a href="/spheretube/"><span class="material-symbols-outlined">home</span> Home</a></li>
+      <li><a href="/spheretube/videos/"><span class="material-symbols-outlined">videocam</span> Videos</a></li>
+      <li><a href="/spheretube/subscriptions/"><span class="material-symbols-outlined">subscriptions</span> Subscriptions</a></li>
+      <li><a href="/spheretube/history/"><span class="material-symbols-outlined">history</span> History</a></li>
+      <li><a href="/spheretube/upload/"><span class="material-symbols-outlined">add_circle</span> Upload / Studio</a></li>
+      <li><a href="/spheretube/settings/"><span class="material-symbols-outlined">settings</span> Settings</a></li>
+    </ul>
+  </nav>
+
+  <div id="overlay" class="overlay hidden"></div>
+
+  <main class="content">
+    <section class="auth-section">
+      <div class="auth-wrap">
+        <h2>Register</h2>
+        <p class="auth-desc">Utwórz konto, aby mieć dostęp do funkcji takich jak Subscriptions, History i Upload.</p>
+
+        <div id="errorBox" class="error" style="display:none"></div>
+
+        <form id="registerForm" autocomplete="on">
+          <div class="form-group">
+            <label for="birthday" style="font-size:13px;color:var(--muted)">Birthday</label>
+            <input id="birthday" name="birthday" type="date" required />
+          </div>
+
+          <div class="form-group">
+            <label for="email" style="font-size:13px;color:var(--muted)">Email</label>
+            <input id="email" name="email" type="email" placeholder="twoj@email.pl" required />
+          </div>
+
+          <div class="form-group">
+            <label for="username" style="font-size:13px;color:var(--muted)">Username</label>
+            <input id="username" name="username" type="text" placeholder="Twoja nazwa użytkownika" required />
+          </div>
+
+          <div class="form-group">
+            <label for="password" style="font-size:13px;color:var(--muted)">Password</label>
+            <div class="pw-row">
+              <input id="password" name="password" type="password" placeholder="Hasło" required style="flex:1" />
+              <button type="button" id="pwToggle" class="pw-toggle" aria-label="Pokaż/ukryj hasło">
+                <span class="material-symbols-outlined">visibility</span>
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top:8px">
+            <button id="registerBtn" class="primary-btn" type="submit">Register</button>
+          </div>
+        </form>
+
+        <a class="muted-link" href="/spheretube/login/">Have an account? Login</a>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/spheretube/js/register.js"></script>
+</body>
+    </html>
