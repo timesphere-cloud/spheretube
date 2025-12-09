@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SphereTube — Upload</title>
+
+  <link rel="icon" href="/spheretube/dev_img/site_icon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+  <link rel="stylesheet" href="/spheretube/css/styles.css" />
+
+  <style>
+    .upload-wrap{max-width:920px;margin:28px auto;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.008));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
+    .upload-row{display:grid;grid-template-columns:1fr 320px;gap:16px}
+    .form{padding:6px}
+    label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+    input[type="text"], textarea{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    textarea{min-height:120px;resize:vertical}
+    .file-input{display:flex;flex-direction:column;gap:8px}
+    .preview{border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);background:#071018;padding:8px;display:flex;flex-direction:column;gap:8px;align-items:center}
+    .preview img{max-width:100%;height:auto;border-radius:6px}
+    .progress-bar{width:100%;height:10px;background:rgba(255,255,255,0.03);border-radius:999px;overflow:hidden}
+    .progress-bar > i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--accent),#4cc3ff)}
+    .muted{color:var(--muted);font-size:13px}
+    .controls{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px}
+    .primary-btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;border:0;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+    .secondary-btn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:8px;color:var(--muted);cursor:pointer}
+    @media (max-width:900px){
+      .upload-row{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="left">
+      <button id="hamburgerBtn" class="icon-btn" aria-label="menu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      <img class="logo" src="/spheretube/dev_img/logo.png" alt="SphereTube logo" />
+    </div>
+
+    <div class="right">
+      <button id="userBtn" class="user-btn" aria-label="konto / login">
+        <span class="material-symbols-outlined">person</span>
+        <span id="authLabel">SignUp / SignIn</span>
+      </button>
+    </div>
+  </header>
+
+  <nav id="sideMenu" class="side-menu closed" aria-hidden="true">
+    <ul>
+      <li><a href="/spheretube/"><span class="material-symbols-outlined">home</span> Home</a></li>
+      <li><a href="/spheretube/videos/"><span class="material-symbols-outlined">videocam</span> Videos</a></li>
+      <li><a href="/spheretube/subscriptions/"><span class="material-symbols-outlined">subscriptions</span> Subscriptions</a></li>
+      <li><a href="/spheretube/history/"><span class="material-symbols-outlined">history</span> History</a></li>
+      <li><a href="/spheretube/upload/"><span class="material-symbols-outlined">add_circle</span> Upload / Studio</a></li>
+      <li><a href="/spheretube/settings/"><span class="material-symbols-outlined">settings</span> Settings</a></li>
+    </ul>
+  </nav>
+
+  <div id="overlay" class="overlay hidden"></div>
+
+  <main class="content">
+    <div class="upload-wrap">
+      <h2>Upload — Dodaj nowe wideo</h2>
+      <p class="muted" id="subtitle">Wybierz plik wideo (.mp4) oraz miniaturkę (.png). Po przesłaniu plików dokumenty zostaną utworzone w Firestore.</p>
+
+      <div class="upload-row">
+        <div class="form">
+          <form id="uploadForm">
+            <div style="margin-bottom:12px">
+              <label for="title">Video name</label>
+              <input id="title" type="text" placeholder="Tytuł wideo" required />
+            </div>
+
+            <div style="margin-bottom:12px">
+              <label for="desc">Video description</label>
+              <textarea id="desc" placeholder="Opis wideo"></textarea>
+            </div>
+
+            <div style="margin-bottom:12px" class="file-input">
+              <label for="thumb">Thumbnail (.png)</label>
+              <input id="thumb" type="file" accept="image/png,image/*" />
+              <div class="muted">Rozmiar pliku zależy od Twoich ustawień Cloudinary. Zalecane: 1280x720 lub 640x360.</div>
+              <div class="progress-bar" id="thumbProgress" style="display:none"><i></i></div>
+            </div>
+
+            <div style="margin-bottom:12px" class="file-input">
+              <label for="videoFile">Video (.mp4)</label>
+              <input id="videoFile" type="file" accept="video/mp4,video/*" required />
+              <div class="muted">Pliki wideo do 10 GB (w zależności od planu Cloudinary).</div>
+              <div class="progress-bar" id="videoProgress" style="display:none"><i></i></div>
+            </div>
+
+            <div class="controls">
+              <button type="button" id="resetBtn" class="secondary-btn">Reset</button>
+              <button type="submit" id="uploadBtn" class="primary-btn">Upload</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="preview">
+          <div style="width:100%">
+            <label class="muted">Miniaturka podgląd</label>
+            <img id="thumbPreview" src="/spheretube/dev_img/site_icon.png" alt="thumbnail preview" />
+          </div>
+          <div style="width:100%">
+            <label class="muted">Podgląd wideo (lokalnie)</label>
+            <video id="videoPreview" controls style="width:100%;border-radius:8px;background:#000" preload="metadata"></video>
+          </div>
+
+          <div style="width:100%;margin-top:10px">
+            <div class="muted">Status:</div>
+            <div id="status" class="muted">Gotowy</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/spheretube/js/upload.js"></script>
+</body>
+        </html>
