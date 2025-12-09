@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SphereTube — Account Info</title>
+
+  <link rel="icon" href="/spheretube/dev_img/site_icon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+  <link rel="stylesheet" href="/spheretube/css/styles.css" />
+
+  <style>
+    .account-wrap{max-width:840px;margin:28px auto;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.008));padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
+    .field-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;margin-bottom:10px;background:transparent;border:1px solid rgba(255,255,255,0.01)}
+    .field-left{display:flex;flex-direction:column;gap:6px}
+    .field-label{color:var(--muted);font-size:13px}
+    .field-value{color:#fff;font-weight:600}
+    .field-actions{display:flex;gap:8px;align-items:center}
+    .small-btn{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
+    .small-btn:hover{color:#fff;background:rgba(255,255,255,0.02)}
+    .danger-btn{border-color:rgba(255,50,50,0.18);color:#ff9b9b}
+    .logout-row{display:flex;justify-content:flex-end;margin-top:14px}
+    .logout-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:0;background:#ff4b4b;color:#fff;font-weight:700;cursor:pointer}
+    .meta-sm{color:var(--muted);font-size:13px}
+    /* modal */
+    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);z-index:120;visibility:hidden;opacity:0;transition:opacity .15s ease}
+    .modal.open{visibility:visible;opacity:1}
+    .modal-panel{background:#071019;padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);min-width:320px;max-width:420px}
+    .modal-panel h3{margin:0 0 8px;color:#fff;font-size:16px}
+    .modal-panel .row{margin-top:8px}
+    .modal-panel input{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+    .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+    .btn-primary{background:var(--accent);color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+    .btn-cancel{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 12px;border-radius:8px;color:var(--muted);cursor:pointer}
+    .info-note{color:var(--muted);font-size:13px;margin-top:6px}
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="left">
+      <button id="hamburgerBtn" class="icon-btn" aria-label="menu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      <img class="logo" src="/spheretube/dev_img/logo.png" alt="SphereTube logo" />
+    </div>
+
+    <div class="right">
+      <button id="userBtn" class="user-btn" aria-label="konto / login">
+        <span class="material-symbols-outlined">person</span>
+        <span id="authLabel">SignUp / SignIn</span>
+      </button>
+    </div>
+  </header>
+
+  <nav id="sideMenu" class="side-menu closed" aria-hidden="true">
+    <ul>
+      <li><a href="/spheretube/"><span class="material-symbols-outlined">home</span> Home</a></li>
+      <li><a href="/spheretube/videos/"><span class="material-symbols-outlined">videocam</span> Videos</a></li>
+      <li><a href="/spheretube/subscriptions/"><span class="material-symbols-outlined">subscriptions</span> Subscriptions</a></li>
+      <li><a href="/spheretube/history/"><span class="material-symbols-outlined">history</span> History</a></li>
+      <li><a href="/spheretube/upload/"><span class="material-symbols-outlined">add_circle</span> Upload / Studio</a></li>
+      <li><a href="/spheretube/settings/"><span class="material-symbols-outlined">settings</span> Settings</a></li>
+    </ul>
+  </nav>
+
+  <div id="overlay" class="overlay hidden"></div>
+
+  <main class="content">
+    <div class="account-wrap">
+      <h2>Account Info</h2>
+      <p class="meta-sm" id="subtitle">Ładowanie danych...</p>
+
+      <div id="fields">
+        <!-- Pola zostaną wypełnione JS -->
+      </div>
+
+      <div class="logout-row">
+        <button id="logoutBtn" class="logout-btn"><span class="material-symbols-outlined">logout</span> Logout</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modals -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <h3 id="modalTitle">Modal</h3>
+      <div id="modalBody">
+        <!-- body dynamiczny -->
+      </div>
+      <div class="modal-actions">
+        <button id="modalCancel" class="btn-cancel">Cancel</button>
+        <button id="modalConfirm" class="btn-primary">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/spheretube/js/account.js"></script>
+</body>
+  </html>
