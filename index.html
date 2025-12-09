@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SphereTube — Strona główna</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="/spheretube/dev_img/site_icon.png" />
+
+  <!-- Google Fonts (typografia) -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/spheretube/css/styles.css" />
+
+  <!-- Firebase (app + analytics loaded in app.js) -->
+</head>
+<body>
+  <header class="topbar">
+    <div class="left">
+      <button id="hamburgerBtn" class="icon-btn" aria-label="menu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      <img class="logo" src="/spheretube/dev_img/logo.png" alt="SphereTube logo" />
+    </div>
+
+    <div class="right">
+      <button id="userBtn" class="user-btn" aria-label="konto / login">
+        <span class="material-symbols-outlined">person</span>
+        <span id="authLabel">SignUp / SignIn</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Side menu -->
+  <nav id="sideMenu" class="side-menu closed" aria-hidden="true">
+    <ul>
+      <li><a href="/spheretube/"><span class="material-symbols-outlined">home</span> Home</a></li>
+      <li><a href="/spheretube/videos/"><span class="material-symbols-outlined">videocam</span> Videos</a></li>
+      <li><a href="/spheretube/subscriptions/"><span class="material-symbols-outlined">subscriptions</span> Subscriptions</a></li>
+      <li><a href="/spheretube/history/"><span class="material-symbols-outlined">history</span> History</a></li>
+      <li><a href="/spheretube/upload/"><span class="material-symbols-outlined">add_circle</span> Upload / Studio</a></li>
+      <li><a href="/spheretube/settings/"><span class="material-symbols-outlined">settings</span> Settings</a></li>
+    </ul>
+  </nav>
+
+  <!-- Overlay to close the menu on click outside -->
+  <div id="overlay" class="overlay hidden"></div>
+
+  <main class="content">
+    <section class="videos-section">
+      <h1>Top 50 — Najlepsze filmy</h1>
+      <div id="videosGrid" class="videos-grid">
+        <!-- Karty wideo zostaną wstrzyknięte tutaj przez JS -->
+      </div>
+
+      <div id="emptyState" class="empty-state hidden">
+        <p>Brak filmów do wyświetlenia.</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Template for a single video card (for reference) -->
+  <!--
+    Required video doc fields (recommended):
+      - title (string)
+      - description (string)
+      - views (number)
+      - uploadedAt (Firestore Timestamp or ISO date)
+      - duration (number seconds)
+      - cloudinary_public_id (string)  <-- public id used to build thumbnail URL
+      - ownerUid (string) optional
+  -->
+
+  <!-- App script (contains Firebase config and logic) -->
+  <script type="module" src="/spheretube/js/app.js"></script>
+</body>
+    </html>
