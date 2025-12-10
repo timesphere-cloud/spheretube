@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SphereTube — Watch</title>
+
+  <link rel="icon" href="/spheretube/dev_img/site_icon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+  <link rel="stylesheet" href="/spheretube/css/styles.css" />
+
+  <style>
+    .watch-wrap{max-width:1200px;margin:24px auto;display:grid;grid-template-columns:1fr 360px;gap:18px;padding:0 12px}
+    .player-card{background:linear-gradient(180deg, rgba(255,255,255,0.006), rgba(255,255,255,0.004));border:1px solid rgba(255,255,255,0.02);border-radius:10px;padding:12px}
+    .video-stage{position:relative;background:#000;border-radius:8px;overflow:hidden}
+    video#mainVideo{width:100%;height:auto;display:block;background:#000}
+    .controls{display:flex;align-items:center;gap:8px;padding:8px 6px}
+    .btn-icon{background:transparent;border:0;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px}
+    .seek{flex:1;display:flex;align-items:center;gap:8px}
+    .seek input[type="range"]{width:100%}
+    .time{min-width:80px;text-align:right;color:var(--muted);font-size:13px}
+    .volume{display:flex;align-items:center;gap:6px}
+    .meta-block{margin-top:12px}
+    .title{font-size:20px;font-weight:700;margin:0;color:#fff}
+    .submeta{color:var(--muted);font-size:13px;margin-top:6px;display:flex;gap:8px;align-items:center}
+    .desc{margin-top:10px;color:var(--muted);font-size:14px;white-space:pre-wrap}
+    .desc-collapsed{max-height:56px;overflow:hidden}
+    .toggle-desc{color:var(--muted);cursor:pointer;margin-top:8px;font-size:13px;background:transparent;border:0}
+    .engage-row{display:flex;align-items:center;gap:12px;margin-top:12px}
+    .like-btn{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--muted);cursor:pointer}
+    .like-btn.active{background:rgba(76,195,255,0.14);color:#fff;border-color:rgba(76,195,255,0.4)}
+    .channel-row{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+    .channel-left{display:flex;gap:10px;align-items:center}
+    .channel-avatar{width:48px;height:48px;border-radius:999px;background:#16303b;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
+    .channel-name{font-weight:700;color:#fff}
+    .channel-actions{display:flex;gap:8px;align-items:center}
+    .subscribe-btn{padding:8px 12px;border-radius:10px;background:var(--accent);color:#fff;border:0;cursor:pointer}
+    .edit-btn{padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--muted);cursor:pointer}
+
+    /* right column recommended */
+    .recommended{background:transparent}
+    .rec-card{display:flex;gap:10px;margin-bottom:12px}
+    .rec-thumb{width:140px;height:78px;border-radius:6px;overflow:hidden;background:#000}
+    .rec-thumb img{width:100%;height:100%;object-fit:cover}
+    .rec-meta{flex:1}
+    .rec-title{color:#fff;font-weight:700;font-size:14px;text-decoration:none}
+    .rec-views{color:var(--muted);font-size:12px;margin-top:6px}
+
+    @media (max-width:1100px){ .watch-wrap{grid-template-columns:1fr} .recommended{order:2} }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="left">
+      <button id="hamburgerBtn" class="icon-btn" aria-label="menu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      <img class="logo" src="/spheretube/dev_img/logo.png" alt="SphereTube logo" />
+    </div>
+
+    <div class="right">
+      <button id="userBtn" class="user-btn" aria-label="konto / login">
+        <span class="material-symbols-outlined">person</span>
+        <span id="authLabel">SignUp / SignIn</span>
+      </button>
+    </div>
+  </header>
+
+  <nav id="sideMenu" class="side-menu closed" aria-hidden="true">
+    <ul>
+      <li><a href="/spheretube/"><span class="material-symbols-outlined">home</span> Home</a></li>
+      <li><a href="/spheretube/videos/"><span class="material-symbols-outlined">videocam</span> Videos</a></li>
+      <li><a href="/spheretube/subscriptions/"><span class="material-symbols-outlined">subscriptions</span> Subscriptions</a></li>
+      <li><a href="/spheretube/history/"><span class="material-symbols-outlined">history</span> History</a></li>
+      <li><a href="/spheretube/upload/"><span class="material-symbols-outlined">add_circle</span> Upload / Studio</a></li>
+      <li><a href="/spheretube/settings/"><span class="material-symbols-outlined">settings</span> Settings</a></li>
+    </ul>
+  </nav>
+
+  <div id="overlay" class="overlay hidden"></div>
+
+  <main class="content">
+    <div class="watch-wrap">
+      <section class="player-card">
+        <div class="video-stage">
+          <video id="mainVideo" preload="metadata" playsinline></video>
+
+          <!-- custom controls -->
+          <div class="controls" id="controls">
+            <button id="playBtn" class="btn-icon" title="Play/Pause"><span class="material-symbols-outlined">play_arrow</span></button>
+
+            <div class="seek">
+              <input id="seekBar" type="range" min="0" max="100" value="0" step="0.1">
+              <div class="time" id="timeDisplay">0:00 / 0:00</div>
+            </div>
+
+            <div class="volume">
+              <span class="material-symbols-outlined">volume_up</span>
+              <input id="volumeBar" type="range" min="0" max="1" step="0.01" value="1" style="width:88px">
+            </div>
+
+            <button id="settingsBtn" class="btn-icon" title="Settings"><span class="material-symbols-outlined">settings</span></button>
+            <button id="fsBtn" class="btn-icon" title="Fullscreen"><span class="material-symbols-outlined">fullscreen</span></button>
+          </div>
+        </div>
+
+        <div class="meta-block">
+          <h1 id="videoTitle" class="title">—</h1>
+          <div class="submeta" id="submeta"> <div id="viewsText">0 wyświetleń</div> • <div id="publishDate">—</div> </div>
+
+          <button class="toggle-desc" id="toggleDesc">Pokaż opis</button>
+          <div id="descText" class="desc desc-collapsed"></div>
+
+          <div class="engage-row">
+            <button id="likeBtn" class="like-btn"><span class="material-symbols-outlined">thumb_up</span><span id="likeCount">0</span></button>
+            <div style="flex:1"></div>
+          </div>
+
+          <div class="channel-row">
+            <div class="channel-left">
+              <div class="channel-avatar" id="channelAvatar">C</div>
+              <div>
+                <div id="channelName" class="channel-name">Channel</div>
+                <div id="channelMeta" class="muted" style="font-size:13px">— subskrybentów</div>
+              </div>
+            </div>
+            <div class="channel-actions" id="channelActions">
+              <!-- subscribe or edit -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="recommended">
+        <h3 style="margin:0 0 10px 0;color:#fff">Recommended</h3>
+        <div id="recommendedList"></div>
+      </aside>
+    </div>
+  </main>
+
+  <script type="module" src="/spheretube/js/watch.js"></script>
+</body>
+  </html>
