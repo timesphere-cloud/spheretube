@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SphereTube — Videos</title>
+
+  <link rel="icon" href="/spheretube/dev_img/site_icon.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+  <link rel="stylesheet" href="/spheretube/css/styles.css" />
+
+  <style>
+    .videos-wrap{max-width:1100px;margin:28px auto;padding:18px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.006), rgba(255,255,255,0.004));border:1px solid rgba(255,255,255,0.02);border-radius:10px;overflow:hidden;padding:8px;display:flex;flex-direction:column;gap:8px}
+    .thumb{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:8px;background:#000;display:flex;align-items:end}
+    .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .duration{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,0.7);padding:4px 6px;border-radius:6px;color:#fff;font-weight:600;font-size:12px}
+    .card-body{padding:6px 4px;display:flex;gap:10px}
+    .meta{flex:1}
+    .title{font-weight:700;color:#fff;margin:0 0 6px;font-size:15px;text-decoration:none}
+    .desc{color:var(--muted);font-size:13px;margin-bottom:6px}
+    .bottom{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .views{color:var(--muted);font-size:13px}
+    .dots-btn{background:transparent;border:0;color:var(--muted);cursor:pointer;padding:6px;border-radius:6px}
+    .dots-menu{position:absolute;background:#071019;border:1px solid rgba(255,255,255,0.03);padding:8px;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.6);display:none;z-index:120}
+    .dots-menu a{display:block;color:var(--muted);padding:6px 8px;text-decoration:none;border-radius:6px}
+    .dots-menu a:hover{color:#fff;background:rgba(255,255,255,0.02)}
+    .load-more{display:flex;justify-content:center;margin:18px 0}
+    .btn{padding:8px 14px;border-radius:10px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    @media (max-width:700px){ .card-body{flex-direction:column} .title{font-size:14px} }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="left">
+      <button id="hamburgerBtn" class="icon-btn" aria-label="menu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+      <img class="logo" src="/spheretube/dev_img/logo.png" alt="SphereTube logo" />
+    </div>
+
+    <div class="right">
+      <button id="userBtn" class="user-btn" aria-label="konto / login">
+        <span class="material-symbols-outlined">person</span>
+        <span id="authLabel">SignUp / SignIn</span>
+      </button>
+    </div>
+  </header>
+
+  <nav id="sideMenu" class="side-menu closed" aria-hidden="true">
+    <ul>
+      <li><a href="/spheretube/"><span class="material-symbols-outlined">home</span> Home</a></li>
+      <li><a href="/spheretube/videos/"><span class="material-symbols-outlined">videocam</span> Videos</a></li>
+      <li><a href="/spheretube/subscriptions/"><span class="material-symbols-outlined">subscriptions</span> Subscriptions</a></li>
+      <li><a href="/spheretube/history/"><span class="material-symbols-outlined">history</span> History</a></li>
+      <li><a href="/spheretube/upload/"><span class="material-symbols-outlined">add_circle</span> Upload / Studio</a></li>
+      <li><a href="/spheretube/settings/"><span class="material-symbols-outlined">settings</span> Settings</a></li>
+    </ul>
+  </nav>
+
+  <div id="overlay" class="overlay hidden"></div>
+
+  <main class="content">
+    <div class="videos-wrap">
+      <h2>Most popular videos</h2>
+      <p class="muted" id="subtitle">Lista posortowana według liczby wyświetleń.</p>
+
+      <div id="grid" class="grid"></div>
+
+      <div class="load-more">
+        <button id="loadMoreBtn" class="btn">Load more</button>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/spheretube/js/videos.js"></script>
+</body>
+  </html>
