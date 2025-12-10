@@ -1,11 +1,9 @@
-// upload.js (module) — menu/auth + Cloudinary unsigned upload + Firestore writes
+// upload.js (module) — menu/auth + upload via backend (Render) + Firestore writes
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, doc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
-/* ====== Firebase config (two razy użyte w różnych plikach) ======
-   Używamy tej samej konfiguracji jak wcześniej
-*/
+/* ====== Firebase config (jak wcześniej) ====== */
 const firebaseConfig = {
   apiKey: "AIzaSyAWjSDTFk12rW1vOGXLM5HmL9mgyYjl64w",
   authDomain: "spheretube-af096.firebaseapp.com",
@@ -20,10 +18,9 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-/* ===== Cloudinary unsigned config ===== */
-const CLOUD_NAME = 'dmogrkbja'; // Twój cloud name
-// IMPORTANT: replace with the name of your **unsigned** upload preset from Cloudinary
-const UPLOAD_PRESET = 'Upload'; // <-- REPLACE THIS
+/* ===== Backend upload server (Render) ===== */
+const UPLOAD_SERVER = 'https://spheretube-backend.onrender.com'; // <-- upewnij się, że to Twój URL na Render
+const UPLOAD_ENDPOINT = `${UPLOAD_SERVER}/upload`;
 
 /* ===== UI refs ===== */
 const hamburgerBtn = document.getElementById('hamburgerBtn');
@@ -87,22 +84,19 @@ function showProgress(el, pct){
   bar.style.width = pct + '%';
 }
 
-/* Upload to Cloudinary unsigned using XHR (works in browser) */
-function uploadToCloudinary(file, resourceType = 'image', onProgress = null){
+/* ===== Upload to backend (XHR so we get progress) =====
+   Returns an object: { videoUrl, thumbUrl, ... } (like backend returns)
+   onProgress(percent) - callback with 0..100 overall progress
+*/
+function uploadToServer(file, thumbFile, onProgress = null){
   return new Promise((resolve, reject) => {
-    const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`;
     const xhr = new XMLHttpRequest();
-    const fd = new FormData();
-
-    fd.append('upload_preset', UPLOAD_PRESET);
-    fd.append('file', file);
-
-    xhr.open('POST', url, true);
+    xhr.open('POST', UPLOAD_ENDPOINT, true);
 
     xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable && typeof onProgress === 'function') {
+      if (e.lengthComputable) {
         const pct = Math.round((e.loaded / e.total) * 100);
-        onProgress(pct);
+        if (typeof onProgress === 'function') onProgress(pct);
       }
     };
 
@@ -113,15 +107,22 @@ function uploadToCloudinary(file, resourceType = 'image', onProgress = null){
             const res = JSON.parse(xhr.responseText);
             resolve(res);
           } catch (err) {
-            reject(new Error('Cloudinary: nieprawidłowa odpowiedź JSON'));
+            reject(new Error('Server returned invalid JSON'));
           }
         } else {
-          reject(new Error('Upload failed: ' + xhr.status + ' — ' + xhr.responseText));
+          let msg = `Upload failed: ${xhr.status}`;
+          try { const r = JSON.parse(xhr.responseText); if (r && r.error) msg = r.error; } catch(e){}
+          reject(new Error(msg));
         }
       }
     };
 
     xhr.onerror = () => reject(new Error('Network error during upload'));
+
+    const fd = new FormData();
+    fd.append('video', file);
+    if (thumbFile) fd.append('thumb', thumbFile);
+
     xhr.send(fd);
   });
 }
@@ -174,14 +175,9 @@ resetBtn.addEventListener('click', () => {
   setStatus('Gotowy');
 });
 
-/* ===== Main upload flow ===== */
+/* ===== Main upload flow (uses uploadToServer) ===== */
 uploadForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-
-  if (!UPLOAD_PRESET || UPLOAD_PRESET === 'YOUR_UNSIGNED_UPLOAD_PRESET') {
-    alert('Ustaw proszę UPLOAD_PRESET w /spheretube/js/upload.js (nazwa unsigned upload preset w Cloudinary).');
-    return;
-  }
 
   const title = (titleInput.value || '').trim();
   const desc = (descInput.value || '').trim();
@@ -195,29 +191,31 @@ uploadForm.addEventListener('submit', async (e) => {
   setStatus('Przygotowanie...');
 
   try {
-    // duration from local
+    // 1) duration from local
     setStatus('Analiza metadanych wideo...');
     const durationSec = await getVideoDuration(videoFile);
 
-    // upload thumbnail if present
-    let thumbResult = null;
-    if (thumbFile) {
-      setStatus('Wysyłanie miniaturki...');
-      showProgress(thumbProgress, 0);
-      thumbResult = await uploadToCloudinary(thumbFile, 'image', (pct) => showProgress(thumbProgress, pct));
-      showProgress(thumbProgress, 100);
-      setStatus('Miniaturka: OK');
-    }
-
-    // upload video
-    setStatus('Wysyłanie wideo (może potrwać)...');
+    // 2) upload to server (single request) with progress callback
+    setStatus('Wysyłanie wideo i miniaturki na serwer...');
     showProgress(videoProgress, 0);
-    const videoResult = await uploadToCloudinary(videoFile, 'video', (pct) => showProgress(videoProgress, pct));
-    showProgress(videoProgress, 100);
-    setStatus('Wideo: OK');
+    showProgress(thumbProgress, 0);
 
-    // save to Firestore
-    setStatus('Zapisywanie metadanych do Firestore...');
+    const uploadResult = await uploadToServer(videoFile, thumbFile, (pct) => {
+      // update both bars proportionally (simple UX)
+      showProgress(videoProgress, pct);
+      showProgress(thumbProgress, pct);
+      setStatus(`Wysyłanie... ${pct}%`);
+    });
+
+    // uploadResult expected: { videoUrl: "...", thumbUrl: "..." }
+    const videoResult = { secure_url: uploadResult.videoUrl || uploadResult.video || null, duration: uploadResult.duration || null };
+    const thumbResult = uploadResult.thumbUrl ? { secure_url: uploadResult.thumbUrl } : null;
+
+    showProgress(videoProgress, 100);
+    showProgress(thumbProgress, 100);
+    setStatus('Pliki przesłane. Zapis do Firestore...');
+
+    // 3) save to Firestore: uploads_info
     const uploadsRef = collection(db, 'uploads_info');
     const uploadsDoc = await addDoc(uploadsRef, {
       Video_name: title,
@@ -230,7 +228,7 @@ uploadForm.addEventListener('submit', async (e) => {
     const docId = uploadsDoc.id;
     const videosRef = doc(db, 'videos', docId);
 
-    const durationFromCloud = videoResult.duration ? Math.floor(videoResult.duration) : null;
+    const durationFromCloud = (videoResult && videoResult.duration) ? Math.floor(videoResult.duration) : null;
     const finalDuration = durationFromCloud ?? durationSec ?? null;
     const ownerUid = currentUser ? currentUser.uid : null;
 
