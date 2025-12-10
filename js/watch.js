@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebas
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, collection, query, orderBy, limit, getDocs,
-  setDoc, deleteDoc, increment, updateDoc, serverTimestamp, runTransaction
+  setDoc, deleteDoc, serverTimestamp, runTransaction
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -56,6 +56,9 @@ hamburgerBtn.addEventListener('click', ()=> sideMenu.classList.contains('open')?
 overlay.addEventListener('click', closeMenu);
 
 let currentUser = null;
+let videoId = null;
+let videoOwner = null; // will be filled after loadVideo
+
 onAuthStateChanged(auth, (u) => {
   currentUser = u;
   if (u) {
@@ -64,6 +67,12 @@ onAuthStateChanged(auth, (u) => {
   } else {
     authLabel.textContent = 'SignUp / SignIn';
     userBtn.onclick = ()=> location.href = '/spheretube/login/';
+  }
+  // update like/subscribe UI if video already loaded
+  if (videoId) {
+    updateLikeState().catch(e=>console.warn('updateLikeState after auth change', e));
+    // re-render subscribe button if owner known
+    if (videoOwner) renderSubscribeButton(videoOwner).catch(e=>console.warn('renderSub after auth change', e));
   }
 });
 
@@ -97,13 +106,12 @@ function getVideoId(){
 }
 
 /* load video metadata from Firestore and populate UI */
-let videoId = getVideoId();
+videoId = getVideoId();
 if (!videoId) {
   videoTitle.textContent = 'Brak wideo';
   descText.textContent = '';
   viewsText.textContent = '';
   publishDate.textContent = '';
-  // nothing else
 } else {
   loadVideo(videoId);
   loadRecommended(videoId);
@@ -119,13 +127,8 @@ async function loadVideo(id){
     }
     const data = snap.data();
 
-    // set video src
-    // oczekujemy pole Video (uploads_info.Video) lub Video_image etc.
-    // Prefer field 'Video' in uploads_info only; here videos collection may have URL in Video_image? we used Video_image for thumbnail and saved secure_url as Videos.Video in uploads_info earlier.
-    // We assume your /videos doc has a 'Video_image' (thumb) and uploads_info stored 'Video' in uploads_info. To keep simple, we try `data.Video` then fallback to `data.Video_image` for poster-only.
-    const videoUrl = data.Video || data.video || null;
-    // if videoUrl missing, try fetch uploads_info doc with same id
-    let finalVideoUrl = videoUrl;
+    // set video src: prefer data.Video, then uploads_info/{id}.Video
+    let finalVideoUrl = data.Video || data.video || null;
     if (!finalVideoUrl) {
       try {
         const upRef = doc(db, 'uploads_info', id);
@@ -137,61 +140,64 @@ async function loadVideo(id){
     if (finalVideoUrl) {
       mainVideo.src = finalVideoUrl;
     } else {
-      // nothing to play
       mainVideo.poster = data.Video_image || '/spheretube/dev_img/site_icon.png';
     }
 
-    // set poster (thumbnail)
-    if (data.Video_image) {
-      mainVideo.poster = data.Video_image;
-    }
+    if (data.Video_image) mainVideo.poster = data.Video_image;
 
     // UI texts
     videoTitle.textContent = data.Video_name || 'Untitled';
     descText.textContent = data.Video_descriprion || '';
     viewsText.textContent = `${data.Video_views ?? 0} wyświetleń`;
     publishDate.textContent = formatDatePolish(data.createdAt);
-
     likeCountEl.textContent = data.Video_likes ?? 0;
 
     // channel info
-    const owner = data.Video_Owner || null;
-    if (owner) {
+    videoOwner = data.Video_Owner || null;
+    if (videoOwner) {
       try {
-        const userRef = doc(db,'user_data', owner);
+        const userRef = doc(db,'user_data', videoOwner);
         const userSnap = await getDoc(userRef);
         const u = userSnap.exists() ? userSnap.data() : null;
-        channelName.textContent = u?.username || (u?.email?u.email.split('@')[0]:'Channel');
-        channelAvatar.textContent = (u?.username? u.username[0].toUpperCase() : (channelName.textContent[0]||'C'));
-        channelMeta.textContent = `${/* placeholder */ ''}`;
-      } catch(e){}
+        // prefer username, then displayName, then email local-part, else 'Channel'
+        const display = u?.username || u?.displayName || (u?.email ? u.email.split('@')[0] : null) || 'Channel';
+        channelName.textContent = display;
+        channelAvatar.textContent = (display[0] || 'C').toUpperCase();
+        channelMeta.textContent = ''; // you can show subscriber count if stored
+      } catch(e){
+        console.warn('load channel info', e);
+        channelName.textContent = 'Channel';
+        channelAvatar.textContent = 'C';
+      }
+    } else {
+      channelName.textContent = 'Channel';
+      channelAvatar.textContent = 'C';
     }
 
-    // owner actions
-    if (currentUser && owner && currentUser.uid === owner) {
+    // owner actions or subscribe
+    if (currentUser && videoOwner && currentUser.uid === videoOwner) {
       channelActions.innerHTML = '';
       const editChan = document.createElement('button'); editChan.className='edit-btn'; editChan.textContent='Edit channel';
-      editChan.onclick = ()=> location.href = `/spheretube/edit_channel/?id=${owner}`;
+      editChan.onclick = ()=> location.href = `/spheretube/edit_channel/?id=${videoOwner}`;
       const editVid = document.createElement('button'); editVid.className='edit-btn'; editVid.textContent='Edit video';
       editVid.onclick = ()=> location.href = `/spheretube/edit_video/?id=${videoId}`;
       channelActions.appendChild(editChan);
       channelActions.appendChild(editVid);
     } else {
-      // subscribe button
-      renderSubscribeButton(owner);
+      // subscribe button (render will consider currentUser)
+      await renderSubscribeButton(videoOwner);
     }
 
     // likes state
     await updateLikeState();
 
-    // increment view count (one simple increment per page load)
+    // increment view count (simple per-load increment)
     try {
       await runTransaction(db, async (tx) => {
         const v = await tx.get(vref);
         if (!v.exists()) return;
         tx.update(vref, { Video_views: (v.data().Video_views ?? 0) + 1 });
       });
-      // update displayed views
       const newSnap = await getDoc(vref);
       viewsText.textContent = `${newSnap.data().Video_views ?? 0} wyświetleń`;
     } catch(e){ console.warn('view increment failed', e); }
@@ -229,7 +235,6 @@ fsBtn.addEventListener('click', ()=> {
   }
 });
 settingsBtn.addEventListener('click', ()=> {
-  // simple menu stub: currently only show resolution if available
   alert('Settings: wybierz rozdzielczość (jeśli dostępna).');
 });
 
@@ -259,48 +264,55 @@ toggleDesc.addEventListener('click', ()=> {
   }
 });
 
-/* Likes handling */
+/* Likes handling — corrected, self-contained (no mutated const) */
 async function updateLikeState(){
   try {
     likeBtn.disabled = false;
+    // if not logged in, clicking should redirect to login
     if (!currentUser) {
-      // not logged in - clicking should redirect to login
-      likeBtn.onclick = ()=> location.href = '/spheretube/login/';
       likeBtn.classList.remove('active');
+      likeBtn.onclick = ()=> location.href = '/spheretube/login/';
       return;
     }
+
     const likeDocId = `${videoId}_${currentUser.uid}`;
     const likeRef = doc(db, 'video_likes', likeDocId);
     const likeSnap = await getDoc(likeRef);
-    const liked = likeSnap.exists();
-    likeBtn.classList.toggle('active', liked);
+    const likedNow = likeSnap.exists();
+
+    // reflect initial state
+    likeBtn.classList.toggle('active', likedNow);
+
+    // onclick handler — do a transaction and refresh counter
     likeBtn.onclick = async ()=> {
       likeBtn.disabled = true;
       try {
-        if (liked) {
-          await runTransaction(db, async (tx) => {
-            const vref = doc(db, 'videos', videoId);
-            const vdoc = await tx.get(vref);
-            if (!vdoc.exists()) throw new Error('Video not found');
-            tx.update(vref, { Video_likes: (vdoc.data().Video_likes ?? 1) - 1 });
+        const vref = doc(db, 'videos', videoId);
+        await runTransaction(db, async (tx) => {
+          const vdoc = await tx.get(vref);
+          if (!vdoc.exists()) throw new Error('Video not found');
+
+          const likeDoc = await tx.get(likeRef);
+          if (likeDoc.exists()) {
+            // remove like
+            const newLikes = (vdoc.data().Video_likes ?? 1) - 1;
+            tx.update(vref, { Video_likes: newLikes < 0 ? 0 : newLikes });
             tx.delete(likeRef);
-          });
-        } else {
-          await runTransaction(db, async (tx) => {
-            const vref = doc(db, 'videos', videoId);
-            const vdoc = await tx.get(vref);
-            if (!vdoc.exists()) throw new Error('Video not found');
-            tx.update(vref, { Video_likes: (vdoc.data().Video_likes ?? 0) + 1 });
+          } else {
+            // add like
+            const newLikes = (vdoc.data().Video_likes ?? 0) + 1;
+            tx.update(vref, { Video_likes: newLikes });
             tx.set(likeRef, { videoId, uid: currentUser.uid, createdAt: serverTimestamp() });
-          });
-        }
-        // refresh like state & counter
-        const newV = await getDoc(doc(db,'videos',videoId));
-        likeCountEl.textContent = newV.data().Video_likes ?? 0;
-        // toggle
-        const nowLiked = !(liked);
-        likeBtn.classList.toggle('active', nowLiked);
-        liked = nowLiked;
+          }
+        });
+
+        // refresh like counter & button state from DB
+        const vSnap = await getDoc(doc(db,'videos',videoId));
+        const likes = vSnap.exists() ? (vSnap.data().Video_likes ?? 0) : 0;
+        likeCountEl.textContent = likes;
+        // toggle visual state (re-read like doc)
+        const newLikeSnap = await getDoc(likeRef);
+        likeBtn.classList.toggle('active', newLikeSnap.exists());
       } catch (e) {
         console.error('like failed', e);
         alert('Błąd podczas zapisu lajka.');
@@ -308,7 +320,10 @@ async function updateLikeState(){
         likeBtn.disabled = false;
       }
     };
-  } catch(e){ console.warn('updateLikeState err', e); }
+  } catch(e){
+    console.warn('updateLikeState err', e);
+    likeBtn.disabled = false;
+  }
 }
 
 /* Subscriptions */
@@ -340,6 +355,9 @@ async function renderSubscribeButton(channelId){
         await setDoc(subRef, { channelId, uid: currentUser.uid, createdAt: serverTimestamp() });
         btn.textContent = 'Subscribed';
       }
+      // after change, flip subscribed variable by re-checking
+      // simpler: reload button
+      await renderSubscribeButton(channelId);
     } catch(e){ console.error('sub err', e); alert('Błąd subskrypcji'); }
     btn.disabled = false;
   };
@@ -369,4 +387,4 @@ async function loadRecommended(currentId){
       recommendedList.appendChild(card);
     });
   } catch(e){ console.error('loadRecommended', e); }
-    }
+}
