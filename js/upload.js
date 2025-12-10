@@ -94,9 +94,9 @@ function uploadToServer(file, thumbFile, onProgress = null){
     xhr.open('POST', UPLOAD_ENDPOINT, true);
 
     xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
+      if (e.lengthComputable && typeof onProgress === 'function') {
         const pct = Math.round((e.loaded / e.total) * 100);
-        if (typeof onProgress === 'function') onProgress(pct);
+        onProgress(pct);
       }
     };
 
