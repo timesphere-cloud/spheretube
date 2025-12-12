@@ -329,53 +329,101 @@ async function updateLikeState(){
     likeBtn.disabled = false;
 
     if (!currentUser) {
+      showError('updateLikeState: user not logged in.');
       likeBtn.classList.remove('active');
       likeBtn.onclick = ()=> location.href = '/spheretube/login/';
       return;
     }
+    if (!videoId) {
+      showError('updateLikeState: brak videoId!');
+      return;
+    }
 
-    // LIKE doc jako podkolekcja: videos/{videoId}/likes/{uid}
+    // references
+    const vref = doc(db, 'videos', videoId);
     const likeDocRef = doc(db, 'videos', videoId, 'likes', currentUser.uid);
-    const likeSnap = await getDoc(likeDocRef);
-    const likedNow = likeSnap.exists();
 
-    // ustaw początkowy wygląd przycisku
+    // check current like doc
+    let likeSnap;
+    try {
+      likeSnap = await getDoc(likeDocRef);
+    } catch (e) {
+      showError('Nie można pobrać likeDoc: ' + (e.message || e));
+      console.warn('getDoc likeDocRef failed', e);
+      likeSnap = null;
+    }
+    const likedNow = likeSnap && likeSnap.exists();
+
+    // initial UI
     likeBtn.classList.toggle('active', likedNow);
 
-    // obsługa kliknięcia
+    // click handler
     likeBtn.onclick = async () => {
       likeBtn.disabled = true;
-      try {
-        const vref = doc(db, 'videos', videoId);
+      // optimistic UI (remember previous)
+      const prevCount = Number(likeCountEl.textContent || 0);
 
+      try {
+        // Try safe transaction (preferred)
         await runTransaction(db, async (tx) => {
           const vdoc = await tx.get(vref);
-          if (!vdoc.exists()) throw new Error('Video not found');
+          if (!vdoc.exists()) throw new Error('Video not found in transaction');
 
           const likeDoc = await tx.get(likeDocRef);
           if (likeDoc.exists()) {
-            // usuwamy like: -1 i usuwamy dokument like
+            // unlike
             const newLikes = (vdoc.data().Video_likes ?? 1) - 1;
             tx.update(vref, { Video_likes: newLikes < 0 ? 0 : newLikes });
             tx.delete(likeDocRef);
           } else {
-            // dodajemy like: +1 i tworzymy dokument like
+            // like
             const newLikes = (vdoc.data().Video_likes ?? 0) + 1;
             tx.update(vref, { Video_likes: newLikes });
             tx.set(likeDocRef, { uid: currentUser.uid, createdAt: serverTimestamp() });
           }
         });
 
-        // odśwież licznik i stan przycisku
-        const vSnap = await getDoc(doc(db, 'videos', videoId));
+        // success -> refresh UI from DB
+        const vSnap = await getDoc(vref);
         const likes = vSnap.exists() ? (vSnap.data().Video_likes ?? 0) : 0;
         likeCountEl.textContent = likes;
         const newLikeSnap = await getDoc(likeDocRef);
         likeBtn.classList.toggle('active', newLikeSnap.exists());
-      } catch (e) {
-        console.error('like failed', e);
-        showError('Błąd podczas zapisu lajka: ' + (e.message || e));
-        alert('Błąd podczas zapisu lajka.');
+        showError('Transakcja lajka powiodła się. Likes=' + likes);
+      } catch (txErr) {
+        // Transaction failed — log and try fallback (best-effort)
+        console.warn('Transakcja lajka nie powiodła się, próbuję fallback', txErr);
+        showError('Transakcja nie powiodła się: ' + (txErr.message || txErr) + ' — próbuję fallback.');
+
+        try {
+          // Re-read to decide add/remove
+          const freshV = await getDoc(vref);
+          const currentLikes = freshV.exists() ? (freshV.data().Video_likes ?? 0) : 0;
+          const likeExists = (await getDoc(likeDocRef)).exists();
+
+          if (likeExists) {
+            // fallback unlike: atomic update decreasing (no transaction)
+            await updateDoc(vref, { Video_likes: increment(-1) });
+            await deleteDoc(likeDocRef);
+            const vSnap = await getDoc(vref);
+            likeCountEl.textContent = vSnap.exists() ? (vSnap.data().Video_likes ?? 0) : 0;
+            likeBtn.classList.remove('active');
+            showError('Fallback: usunięto like. New=' + likeCountEl.textContent);
+          } else {
+            // fallback like
+            await updateDoc(vref, { Video_likes: increment(1) });
+            await setDoc(likeDocRef, { uid: currentUser.uid, createdAt: serverTimestamp() });
+            const vSnap = await getDoc(vref);
+            likeCountEl.textContent = vSnap.exists() ? (vSnap.data().Video_likes ?? 0) : 0;
+            likeBtn.classList.add('active');
+            showError('Fallback: dodano like. New=' + likeCountEl.textContent);
+          }
+        } catch (fbErr) {
+          console.error('Fallback failed', fbErr);
+          showError('Fallback nie powiódł się: ' + (fbErr.message || fbErr));
+          // revert optimistic UI if present
+          likeCountEl.textContent = prevCount;
+        }
       } finally {
         likeBtn.disabled = false;
       }
