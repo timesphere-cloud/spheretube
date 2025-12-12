@@ -323,63 +323,64 @@ toggleDesc.addEventListener('click', ()=> {
 });
 
 /* Likes handling — corrected, self-contained (no mutated const) */
+// Zastąp istniejącą funkcję updateLikeState() tym kodem:
 async function updateLikeState(){
   try {
     likeBtn.disabled = false;
-    // if not logged in, clicking should redirect to login
+
     if (!currentUser) {
       likeBtn.classList.remove('active');
       likeBtn.onclick = ()=> location.href = '/spheretube/login/';
       return;
     }
 
-    const likeDocId = `${videoId}_${currentUser.uid}`;
-    const likeRef = doc(db, 'video_likes', likeDocId);
-    const likeSnap = await getDoc(likeRef);
+    // LIKE doc jako podkolekcja: videos/{videoId}/likes/{uid}
+    const likeDocRef = doc(db, 'videos', videoId, 'likes', currentUser.uid);
+    const likeSnap = await getDoc(likeDocRef);
     const likedNow = likeSnap.exists();
 
-    // reflect initial state
+    // ustaw początkowy wygląd przycisku
     likeBtn.classList.toggle('active', likedNow);
 
-    // onclick handler — do a transaction and refresh counter
-    likeBtn.onclick = async ()=> {
+    // obsługa kliknięcia
+    likeBtn.onclick = async () => {
       likeBtn.disabled = true;
       try {
         const vref = doc(db, 'videos', videoId);
+
         await runTransaction(db, async (tx) => {
           const vdoc = await tx.get(vref);
           if (!vdoc.exists()) throw new Error('Video not found');
 
-          const likeDoc = await tx.get(likeRef);
+          const likeDoc = await tx.get(likeDocRef);
           if (likeDoc.exists()) {
-            // remove like
+            // usuwamy like: -1 i usuwamy dokument like
             const newLikes = (vdoc.data().Video_likes ?? 1) - 1;
             tx.update(vref, { Video_likes: newLikes < 0 ? 0 : newLikes });
-            tx.delete(likeRef);
+            tx.delete(likeDocRef);
           } else {
-            // add like
+            // dodajemy like: +1 i tworzymy dokument like
             const newLikes = (vdoc.data().Video_likes ?? 0) + 1;
             tx.update(vref, { Video_likes: newLikes });
-            tx.set(likeRef, { videoId, uid: currentUser.uid, createdAt: serverTimestamp() });
+            tx.set(likeDocRef, { uid: currentUser.uid, createdAt: serverTimestamp() });
           }
         });
 
-        // refresh like counter & button state from DB
-        const vSnap = await getDoc(doc(db,'videos',videoId));
+        // odśwież licznik i stan przycisku
+        const vSnap = await getDoc(doc(db, 'videos', videoId));
         const likes = vSnap.exists() ? (vSnap.data().Video_likes ?? 0) : 0;
         likeCountEl.textContent = likes;
-        // toggle visual state (re-read like doc)
-        const newLikeSnap = await getDoc(likeRef);
+        const newLikeSnap = await getDoc(likeDocRef);
         likeBtn.classList.toggle('active', newLikeSnap.exists());
       } catch (e) {
         console.error('like failed', e);
-        alert('Błąd podczas zapisu lajka.');
         showError('Błąd podczas zapisu lajka: ' + (e.message || e));
+        alert('Błąd podczas zapisu lajka.');
       } finally {
         likeBtn.disabled = false;
       }
     };
-  } catch(e){
+  } catch (e) {
     console.warn('updateLikeState err', e);
     showError('updateLikeState err: ' + (e.message || e));
     likeBtn.disabled = false;
