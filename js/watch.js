@@ -19,6 +19,40 @@ initializeApp(firebaseConfig);
 const auth = getAuth();
 const db = getFirestore();
 
+/* ===== showError helper (creates #errorBox if missing) ===== */
+function showError(msg) {
+  try {
+    let box = document.getElementById('errorBox');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'errorBox';
+      box.style.cssText = [
+        'display:block',
+        'color:#ffdede',
+        'background:#4a1b1b',
+        'padding:10px',
+        'margin:12px auto',
+        'border-radius:8px',
+        'font-size:13px',
+        'max-width:1100px',
+        'white-space:pre-wrap',
+        'box-shadow:0 6px 20px rgba(0,0,0,0.6)'
+      ].join(';');
+      // append under main content if possible
+      const main = document.querySelector('main.content') || document.body;
+      main.appendChild(box);
+    }
+    const time = new Date().toLocaleTimeString();
+    const line = document.createElement('div');
+    line.textContent = `[${time}] ${msg}`;
+    box.appendChild(line);
+    // keep newest at top for visibility
+    box.scrollTop = box.scrollHeight;
+  } catch (e) {
+    console.error('showError failed', e);
+  }
+}
+
 /* UI refs */
 const mainVideo = document.getElementById('mainVideo');
 const playBtn = document.getElementById('playBtn');
@@ -70,9 +104,15 @@ onAuthStateChanged(auth, (u) => {
   }
   // update like/subscribe UI if video already loaded
   if (videoId) {
-    updateLikeState().catch(e=>console.warn('updateLikeState after auth change', e));
+    updateLikeState().catch(e=>{
+      console.warn('updateLikeState after auth change', e);
+      showError('updateLikeState after auth change: ' + (e.message || e));
+    });
     // re-render subscribe button if owner known
-    if (videoOwner) renderSubscribeButton(videoOwner).catch(e=>console.warn('renderSub after auth change', e));
+    if (videoOwner) renderSubscribeButton(videoOwner).catch(e=>{
+      console.warn('renderSub after auth change', e);
+      showError('renderSubscribeButton after auth change: ' + (e.message || e));
+    });
   }
 });
 
@@ -134,7 +174,10 @@ async function loadVideo(id){
         const upRef = doc(db, 'uploads_info', id);
         const upSnap = await getDoc(upRef);
         if (upSnap.exists()) finalVideoUrl = upSnap.data().Video || upSnap.data().video || null;
-      } catch(e){}
+      } catch(e){
+        console.warn('uploads_info check failed', e);
+        showError('Sprawdzenie uploads_info nie powiodło się: ' + (e.message || e));
+      }
     }
 
     if (finalVideoUrl) {
@@ -166,6 +209,7 @@ async function loadVideo(id){
         channelMeta.textContent = ''; // you can show subscriber count if stored
       } catch(e){
         console.warn('load channel info', e);
+        showError('Nie udało się wczytać informacji o kanale: ' + (e.message || e));
         channelName.textContent = 'Channel';
         channelAvatar.textContent = 'C';
       }
@@ -185,11 +229,21 @@ async function loadVideo(id){
       channelActions.appendChild(editVid);
     } else {
       // subscribe button (render will consider currentUser)
-      await renderSubscribeButton(videoOwner);
+      try {
+        await renderSubscribeButton(videoOwner);
+      } catch(e){
+        console.warn('renderSubscribeButton failed', e);
+        showError('renderSubscribeButton failed: ' + (e.message || e));
+      }
     }
 
     // likes state
-    await updateLikeState();
+    try {
+      await updateLikeState();
+    } catch(e){
+      console.warn('updateLikeState failed', e);
+      showError('updateLikeState failed: ' + (e.message || e));
+    }
 
     // increment view count (simple per-load increment)
     try {
@@ -200,10 +254,14 @@ async function loadVideo(id){
       });
       const newSnap = await getDoc(vref);
       viewsText.textContent = `${newSnap.data().Video_views ?? 0} wyświetleń`;
-    } catch(e){ console.warn('view increment failed', e); }
+    } catch(e){
+      console.warn('view increment failed', e);
+      showError('Zwiększenie liczby wyświetleń nie powiodło się: ' + (e.message || e));
+    }
 
   } catch (err) {
     console.error('loadVideo error', err);
+    showError('loadVideo error: ' + (err.message || err));
   }
 }
 
@@ -316,12 +374,14 @@ async function updateLikeState(){
       } catch (e) {
         console.error('like failed', e);
         alert('Błąd podczas zapisu lajka.');
+        showError('Błąd podczas zapisu lajka: ' + (e.message || e));
       } finally {
         likeBtn.disabled = false;
       }
     };
   } catch(e){
     console.warn('updateLikeState err', e);
+    showError('updateLikeState err: ' + (e.message || e));
     likeBtn.disabled = false;
   }
 }
@@ -358,7 +418,7 @@ async function renderSubscribeButton(channelId){
       // after change, flip subscribed variable by re-checking
       // simpler: reload button
       await renderSubscribeButton(channelId);
-    } catch(e){ console.error('sub err', e); alert('Błąd subskrypcji'); }
+    } catch(e){ console.error('sub err', e); alert('Błąd subskrypcji'); showError('Błąd subskrypcji: ' + (e.message || e)); }
     btn.disabled = false;
   };
   channelActions.appendChild(btn);
@@ -386,5 +446,5 @@ async function loadRecommended(currentId){
       card.appendChild(t); card.appendChild(meta);
       recommendedList.appendChild(card);
     });
-  } catch(e){ console.error('loadRecommended', e); }
-}
+  } catch(e){ console.error('loadRecommended', e); showError('loadRecommended error: ' + (e.message || e)); }
+  }
