@@ -3,7 +3,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebas
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, collection, query, orderBy, limit, getDocs,
-  setDoc, deleteDoc, serverTimestamp, runTransaction, increment
+  setDoc, deleteDoc, serverTimestamp, runTransaction, updateDoc, increment
 } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
 
 const firebaseConfig = {
